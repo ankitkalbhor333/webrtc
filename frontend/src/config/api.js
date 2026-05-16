@@ -13,6 +13,11 @@ function readRuntimeConfig() {
   return { API_URL: '', SOCKET_URL: '' };
 }
 
+/** Known Render hostname → API URL (used when env vars are missing at build). */
+const RENDER_API_BY_FRONTEND_HOST = {
+  'webrtc-1-fzsr.onrender.com': 'https://webrtc-nn8s.onrender.com',
+};
+
 /** Infer API URL on Render when env vars were not set at build time. */
 function inferRenderServiceUrl() {
   if (typeof window === 'undefined') return null;
@@ -20,12 +25,12 @@ function inferRenderServiceUrl() {
   const { hostname, protocol } = window.location;
   if (!hostname.endsWith('.onrender.com')) return null;
 
-  if (hostname.includes('-frontend')) {
-    return `${protocol}//${hostname.replace('-frontend', '-api')}`;
+  if (RENDER_API_BY_FRONTEND_HOST[hostname]) {
+    return RENDER_API_BY_FRONTEND_HOST[hostname];
   }
 
-  if (hostname.startsWith('webrtc-frontend')) {
-    return `${protocol}//webrtc-api.onrender.com`;
+  if (hostname.includes('-frontend')) {
+    return `${protocol}//${hostname.replace('-frontend', '-api')}`;
   }
 
   return null;
