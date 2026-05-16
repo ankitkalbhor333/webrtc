@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { getAllowedOrigins } from '../config/cors.js';
+import { corsOrigin } from '../config/cors.js';
 
 const connections = {};
 const userNames = {};
@@ -36,7 +36,7 @@ function removeSocketFromAllRooms(socket, io) {
 const connecttosocket = (server) => {
   const io = new Server(server, {
     cors: {
-      origin: getAllowedOrigins(),
+      origin: (origin, callback) => corsOrigin(origin, callback),
       credentials: true,
     },
   });

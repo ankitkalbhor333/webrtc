@@ -6,14 +6,13 @@ import cors from 'cors';
 import dotenv from "dotenv";
 import connecttosocket from './src/controller/socketmanager.js';
 import userRoutes from './src/routes/userroutes.js';
-import { getAllowedOrigins } from './src/config/cors.js';
+import { corsOrigin } from './src/config/cors.js';
 dotenv.config();
 
 const app = express();
-const allowedOrigins = getAllowedOrigins();
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: corsOrigin,
   credentials: true
 }));
 app.use(express.json({limit: '50mb'}));
@@ -34,11 +33,21 @@ const httpServer = createServer(app);
 const io =connecttosocket(httpServer)
 ;
 const start = async () => {
-  await mongoose.connect(process.env.MONGO_URL);
-  console.log("Connected to MongoDB");
+  if (!process.env.MONGO_URL) {
+    console.error('MONGO_URL is not set');
+    process.exit(1);
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGO_URL);
+    console.log('Connected to MongoDB');
+  } catch (err) {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  }
 
   httpServer.listen(process.env.PORT || 3000, () => {
-    console.log('Server running...');
+    console.log(`Server running on port ${process.env.PORT || 3000}`);
   });
 };
 

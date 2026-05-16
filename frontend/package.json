@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node scripts/generate-runtime-config.mjs && vite build",
     "render-build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
