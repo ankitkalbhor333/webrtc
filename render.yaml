@@ -1,0 +1,46 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Connect repo https://github.com/ankitkalbhor333/webrtc and use "New > Blueprint"
+services:
+  - type: web
+    name: webrtc-api
+    runtime: node
+    plan: free
+    rootDir: webrtcserver
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: webrtc-frontend
+          property: host
+
+  - type: web
+    name: webrtc-frontend
+    runtime: static
+    plan: free
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: webrtc-api
+          property: host
+      - key: VITE_SOCKET_URL
+        fromService:
+          type: web
+          name: webrtc-api
+          property: host

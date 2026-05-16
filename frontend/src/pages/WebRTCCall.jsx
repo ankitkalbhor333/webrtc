@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
+import { SOCKET_URL } from '../config/api.js';
 import '../styles/webrtc-call.css';
 
 const ICE_SERVERS = {
@@ -173,7 +174,7 @@ export default function WebRTCCall({ roomId, onLeave }) {
         localStreamRef.current = stream;
         setHasLocalStream(true);
 
-        const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000', {
+        const socket = io(SOCKET_URL, {
           reconnection: true,
           reconnectionDelay: 1000,
           reconnectionAttempts: 5,
