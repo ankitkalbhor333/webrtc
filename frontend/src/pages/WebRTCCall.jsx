@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/api.js';
+import CallChat from '../components/CallChat.jsx';
 import '../styles/webrtc-call.css';
+import '../styles/call-chat.css';
 
 const ICE_SERVERS = {
   iceServers: [
@@ -32,6 +34,8 @@ export default function WebRTCCall({ roomId, onLeave }) {
   const [isHost, setIsHost] = useState(false);
   const [connectionState, setConnectionState] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [chatSocket, setChatSocket] = useState(null);
+  const [mySocketId, setMySocketId] = useState(null);
 
   const attachLocalStream = useCallback(() => {
     const videoEl = localVideoRef.current;
@@ -139,6 +143,8 @@ export default function WebRTCCall({ roomId, onLeave }) {
     remoteSocketIdRef.current = null;
     isHostRef.current = false;
     initRef.current = false;
+    setChatSocket(null);
+    setMySocketId(null);
   };
 
   useEffect(() => {
@@ -184,7 +190,11 @@ export default function WebRTCCall({ roomId, onLeave }) {
         socket.on('connect', () => {
           if (cancelled) return;
           setIsConnected(true);
-          socket.emit('join-call', { roomId, userName: name });
+          setChatSocket(socket);
+          setMySocketId(socket.id);
+          isHostRef.current = true;
+          setIsHost(true);
+          socket.emit('join-room', { roomId, userName: name });
         });
 
         socket.on('connect_error', (err) => {
@@ -195,36 +205,23 @@ export default function WebRTCCall({ roomId, onLeave }) {
           setErrorMsg(message);
         });
 
-        socket.on('room-joined', ({ isHost: hostRole, participants }) => {
+        socket.on('user-joined', async (remoteSocketId) => {
           if (cancelled) return;
-          isHostRef.current = hostRole;
-          setIsHost(hostRole);
 
-          if (!hostRole && participants.length > 0) {
-            const host = participants[0];
-            remoteSocketIdRef.current = host.socketId;
-            setRemoteUser({
-              socketId: host.socketId,
-              userName: host.userName,
-            });
-          }
-        });
-
-        socket.on('new-participant', async (participant) => {
-          if (cancelled || !isHostRef.current) return;
-
-          remoteSocketIdRef.current = participant.socketId;
+          remoteSocketIdRef.current = remoteSocketId;
           setRemoteUser({
-            socketId: participant.socketId,
-            userName: participant.userName,
+            socketId: remoteSocketId,
+            userName: 'Guest',
           });
 
-          await initiateCall(participant.socketId);
+          await initiateCall(remoteSocketId);
         });
 
         socket.on('offer', async (data) => {
           if (cancelled) return;
 
+          isHostRef.current = false;
+          setIsHost(false);
           remoteSocketIdRef.current = data.from;
           setRemoteUser({
             socketId: data.from,
@@ -410,6 +407,7 @@ export default function WebRTCCall({ roomId, onLeave }) {
 
       {errorMsg && <div className="call-error">{errorMsg}</div>}
 
+      <div className="call-body">
       <div className="videos-container">
         <div className="video-wrapper local-video">
           <video ref={localVideoRef} autoPlay muted playsInline className="video-element" />
@@ -446,6 +444,13 @@ export default function WebRTCCall({ roomId, onLeave }) {
             <div className="video-label">{remoteLabel}</div>
           )}
         </div>
+      </div>
+
+      <CallChat
+        socket={chatSocket}
+        mySocketId={mySocketId}
+        enabled={isConnected}
+      />
       </div>
 
       <div className="controls-container">
