@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { SOCKET_URL } from '../config/api.js';
 import CallChat from '../components/CallChat.jsx';
+import { useScreenShare } from '../hooks/useScreenShare.js';
+import { isScreenSharingSupported } from '../utils/screenShareUtils.js';
 import '../styles/webrtc-call.css';
 import '../styles/call-chat.css';
 
@@ -36,6 +38,18 @@ export default function WebRTCCall({ roomId, onLeave }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [chatSocket, setChatSocket] = useState(null);
   const [mySocketId, setMySocketId] = useState(null);
+
+  // Screen sharing hook
+  const {
+    isScreenSharing,
+    error: screenShareError,
+    toggleScreenShare,
+    cleanup: cleanupScreenShare
+  } = useScreenShare(
+    peerConnectionRef.current,
+    localStreamRef.current,
+    localVideoRef
+  );
 
   const attachLocalStream = useCallback(() => {
     const videoEl = localVideoRef.current;
@@ -145,6 +159,8 @@ export default function WebRTCCall({ roomId, onLeave }) {
     initRef.current = false;
     setChatSocket(null);
     setMySocketId(null);
+    // Clean up screen sharing resources
+    cleanupScreenShare();
   };
 
   useEffect(() => {
@@ -373,6 +389,19 @@ export default function WebRTCCall({ roomId, onLeave }) {
     setIsCameraOn((p) => !p);
   };
 
+  const handleScreenShareClick = async () => {
+    if (!isScreenSharingSupported()) {
+      setErrorMsg('Screen sharing not supported in your browser');
+      return;
+    }
+
+    try {
+      await toggleScreenShare();
+    } catch (error) {
+      console.error('Screen share toggle error:', error);
+    }
+  };
+
   const endCall = () => {
     cleanup();
     onLeave?.();
@@ -406,6 +435,7 @@ export default function WebRTCCall({ roomId, onLeave }) {
       </div>
 
       {errorMsg && <div className="call-error">{errorMsg}</div>}
+      {screenShareError && <div className="call-error screen-share-error">Screen Share: {screenShareError}</div>}
 
       <div className="call-body">
       <div className="videos-container">
@@ -460,6 +490,11 @@ export default function WebRTCCall({ roomId, onLeave }) {
         <button className={`control-btn ${isCameraOn ? 'active' : ''}`} onClick={toggleCamera} type="button">
           {isCameraOn ? '📹' : '🚫'}
         </button>
+        {isScreenSharingSupported() && (
+          <button className={`control-btn ${isScreenSharing ? 'active' : ''}`} onClick={handleScreenShareClick} type="button" title={isScreenSharing ? 'Stop sharing screen' : 'Share your screen'}>
+            {isScreenSharing ? '🖥️' : '🖥️'}
+          </button>
+        )}
         <button className="control-btn end-call" onClick={endCall} type="button">📞</button>
       </div>
 
